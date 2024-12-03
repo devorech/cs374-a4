@@ -63,6 +63,12 @@ pthread_mutex_t mutex_3 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t full_3 = PTHREAD_COND_INITIALIZER;
 
 
+// Initialize the trackers to kill each threads (default = 0, will be equal to 1 when a STOP is read)
+int stop_input = 0;
+int stop_line_seperator = 0;
+int stop_plus_sign = 0;
+
+
 // NOTES:
 // read index and write index (only need a read index for buffer 1 and 2)
 // checking whether there is 80 characters is done in the output thread
@@ -76,7 +82,7 @@ This function doesn't perform any error checking.
 char* get_user_input()
 {
     char* input = (char*) calloc(1000, sizeof(char));
-    printf("Enter your string here: ");
+    //printf("Enter your string here: ");
     fgets(input, 1000, stdin);
     return input;
 }
@@ -111,7 +117,14 @@ void *get_input(void *args)
     // Get the user input
     char* item = get_user_input();
     put_buff_1(item);
-    //printf("Buffer 1 Text: \n%s", buffer_1);
+    
+    // Exit thread if the user enters/passes through STOP
+    if (strcmp(item, "STOP\n") == 0)
+    {
+      //printf("Thread 1 ending!\n");
+      stop_input = 1; // signal input thread has stopped
+      pthread_exit(NULL);
+    }
   }
   return NULL;
 }
@@ -205,10 +218,18 @@ void *seperate_line(void *args)
 {
   for (int i = 0; i < NUM_LINES; i++)
   {
+    if (stop_input == 1)
+    {
+      //printf("Thread 2 ending!\n");
+      stop_line_seperator = 1; // signal line seperator has stopped
+      pthread_exit(NULL);
+    }
     char* item = get_buff_1(); // item is dynamically allocated data
     replace_ls(item);
     put_buff_2(item);
-    //printf("\nBuffer 2 text: %s\n", buffer_2);
+    //printf("Buffer 2: %s\n", buffer_2);
+    //printf("STOPing is equal to %d\n", stop_threads);
+    // Exit thread if the user enters/passes through STOP
   }
   return NULL;
 }
@@ -295,9 +316,16 @@ void *replace_plusplus(void *args)
 {
   for (int i = 0; i < NUM_LINES; i++)
   {
+    if (stop_line_seperator == 1)
+    {
+      //printf("Thread 3 ending!\n");
+      stop_plus_sign = 1; // plus sign has stopped
+      pthread_exit(NULL);
+    }
     char* item = get_buff_2();
     replace_plus_with_caret(item);
     put_buff_3(item);
+    // Exit thread if the user enters/passes through STOP
   }
 
   return NULL;
@@ -337,21 +365,35 @@ char* get_buff_3()
 */
 void *write_output(void *args)
 {
+  char output[BUF_SIZE];
+  int ri = 0; // index that was last read from
+  int wi = 0; // index that is currently being wrote at in the buffer
   for (int i = 0; i < NUM_LINES; i++)
   {
-    /*
-    char output[BUF_SIZE];
-    char* item;
-    while (strlen(output) < 80)
-    {
-      item = get_buff_3();
-      strcat(output, item);
-    }
-    printf("\n%s", output);*/
-
+    //printf("Before - Write index: %d\n", wi);
     char* item = get_buff_3();
-    printf("\n%s\n", item);
+    strcat(output, item);
+    // Exit thread if the user enters/passes through STOP
 
+    wi += strlen(item);
+    //printf("After - Write index: %d\n", wi);
+
+    // Check if there are more than 80 characters to read
+    while ((wi - ri) > 79)
+    {
+      char* to_print = calloc(80, sizeof(char));
+      strncpy(to_print, &output[ri], 80); 
+      //printf("In Output Buffer: %s\n", output);
+      printf("%s\n", to_print);
+      ri += 80;
+      //printf("New read index: %d\n", ri);
+    }
+
+    if (stop_plus_sign == 1)
+    {
+      //printf("Thread 4 ending!\n");
+      pthread_exit(NULL);
+    } 
   }
   return NULL;
 }
