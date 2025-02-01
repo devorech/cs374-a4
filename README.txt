@@ -1,4 +1,4 @@
-The following text below contains the necessary information to run and compile the program!
+The following text below contains the necessary information to run and compile the program
 ________________________________________________________________________________________________________
 
 STEPS TO RUN AND COMPILE:
