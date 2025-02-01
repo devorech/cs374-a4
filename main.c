@@ -69,12 +69,6 @@ int stop_line_seperator = 0;
 int stop_plus_sign = 0;
 
 
-// NOTES:
-// read index and write index (only need a read index for buffer 1 and 2)
-// checking whether there is 80 characters is done in the output thread
-//  - check if difference between the read and write indeces is >= 80
-
-
 /*
 Get input from the user.
 This function doesn't perform any error checking.
@@ -218,18 +212,18 @@ void *seperate_line(void *args)
 {
   for (int i = 0; i < NUM_LINES; i++)
   {
-    if (stop_input == 1)
-    {
-      //printf("Thread 2 ending!\n");
-      stop_line_seperator = 1; // signal line seperator has stopped
-      pthread_exit(NULL);
-    }
     char* item = get_buff_1(); // item is dynamically allocated data
     replace_ls(item);
     put_buff_2(item);
     //printf("Buffer 2: %s\n", buffer_2);
     //printf("STOPing is equal to %d\n", stop_threads);
     // Exit thread if the user enters/passes through STOP
+    if (stop_input == 1)
+    {
+      //printf("Thread 2 ending!\n");
+      stop_line_seperator = 1; // signal line seperator has stopped
+      pthread_exit(NULL);
+    }
   }
   return NULL;
 }
@@ -316,16 +310,16 @@ void *replace_plusplus(void *args)
 {
   for (int i = 0; i < NUM_LINES; i++)
   {
+    char* item = get_buff_2();
+    replace_plus_with_caret(item);
+    put_buff_3(item);
+    // Exit thread if the user enters/passes through STOP
     if (stop_line_seperator == 1)
     {
       //printf("Thread 3 ending!\n");
       stop_plus_sign = 1; // plus sign has stopped
       pthread_exit(NULL);
     }
-    char* item = get_buff_2();
-    replace_plus_with_caret(item);
-    put_buff_3(item);
-    // Exit thread if the user enters/passes through STOP
   }
 
   return NULL;
